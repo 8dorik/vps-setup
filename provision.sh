@@ -190,9 +190,9 @@ clone_project() {
 
     info "Cloning pentium repo to /opt/pentium..."
     git clone "https://${GH_PAT}@github.com/8dorik/pentium.git" /opt/pentium
-    chown -R deploy:deploy /opt/pentium
-    # Remove PAT from remote URL after clone
+    # Remove PAT from remote URL before chown to avoid dubious ownership error
     git -C /opt/pentium remote set-url origin git@github.com:8dorik/pentium.git
+    chown -R deploy:deploy /opt/pentium
 }
 
 setup_ghcr() {

@@ -40,7 +40,16 @@ update_system() {
 install_packages() {
     info "Installing base packages..."
     apt-get install -y -qq \
-        zsh fzf git curl wget ufw ca-certificates gnupg oh-my-zsh htop unzip
+        zsh fzf git curl wget ufw ca-certificates gnupg htop unzip
+}
+
+install_ohmyzsh() {
+    if [[ -d /usr/share/oh-my-zsh ]]; then
+        info "oh-my-zsh already installed, skipping."
+        return
+    fi
+    info "Installing oh-my-zsh..."
+    git clone --depth=1 https://github.com/ohmyzsh/ohmyzsh.git /usr/share/oh-my-zsh
 }
 
 install_docker() {
@@ -235,6 +244,7 @@ main() {
 
     update_system
     install_packages
+    install_ohmyzsh
     install_docker
     install_zsh_plugins
     create_deploy_user

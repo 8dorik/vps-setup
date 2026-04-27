@@ -11,10 +11,12 @@ check_root() {
 }
 
 NODE_ROLE=""
+NODE_NAME=""
 parse_args() {
     for arg in "$@"; do
         case $arg in
             --role=*) NODE_ROLE="${arg#*=}" ;;
+            --name=*) NODE_NAME="${arg#*=}" ;;
             *) error "Unknown argument: $arg" ;;
         esac
     done
@@ -23,7 +25,8 @@ parse_args() {
         antidetect|orchestrator|validator) ;;
         *) error "Invalid role: $NODE_ROLE" ;;
     esac
-    info "Provisioning role: $NODE_ROLE"
+    [[ -z $NODE_NAME ]] && NODE_NAME="$NODE_ROLE"
+    info "Provisioning role: $NODE_ROLE, hostname: $NODE_NAME"
 }
 
 validate_env() {
@@ -75,6 +78,22 @@ install_zsh_plugins() {
     done
 }
 
+prompt_deploy_password() {
+    local pass confirm
+    while true; do
+        read -r -s -p "Enter password for deploy user: " pass < /dev/tty
+        echo
+        read -r -s -p "Confirm password: " confirm < /dev/tty
+        echo
+        if [[ $pass == $confirm ]]; then
+            [[ -n $pass ]] || { warn "Password cannot be empty. Try again."; continue; }
+            DEPLOY_PASSWORD="$pass"
+            break
+        fi
+        warn "Passwords do not match. Try again."
+    done
+}
+
 create_deploy_user() {
     if id deploy &>/dev/null; then
         info "User 'deploy' already exists, skipping creation."
@@ -83,6 +102,7 @@ create_deploy_user() {
         useradd -m -s /usr/bin/zsh deploy
     fi
 
+    echo "deploy:${DEPLOY_PASSWORD}" | chpasswd
     usermod -aG sudo deploy
     usermod -aG docker deploy
 
@@ -141,6 +161,11 @@ PROMPT="%n@%m ${PROMPT}"
 export PATH="$HOME/.local/bin:$PATH"
 EOF
     chown deploy:deploy /home/deploy/.zshrc
+}
+
+set_hostname() {
+    info "Setting hostname to: $NODE_NAME"
+    hostnamectl set-hostname "$NODE_NAME"
 }
 
 harden_ssh() {
@@ -241,7 +266,9 @@ main() {
     check_root
     parse_args "$@"
     validate_env
+    prompt_deploy_password
 
+    set_hostname
     update_system
     install_packages
     install_ohmyzsh
